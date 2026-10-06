@@ -188,8 +188,6 @@ function getSigningBonusLabel(score) {
 }
 
 function generateDraftResultForTier(score) {
-  // This creates a rough exact pick inside the score's range.
-  // Higher score = higher pick, but still some uncertainty.
   if (score >= 90) {
     const round = 1;
     const pick = Math.floor(Math.random() * 10) + 1;
