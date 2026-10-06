@@ -72,7 +72,10 @@ function createPlayer(name, year, team) {
     draftStock: 0,
     draftTier: "Undecided",
     collegeYears: 0,
-    organizationLevel: "High School Playoffs"
+    organizationLevel: "High School Playoffs",
+    signingBonus: 0,
+    draftRound: null,
+    draftPick: null
   };
 
   state.player = player;
@@ -174,6 +177,52 @@ function getDraftTierFromScore(score) {
   return "Undrafted";
 }
 
+function getSigningBonusLabel(score) {
+  if (score >= 90) return "$1,500,000+";
+  if (score >= 82) return "$600,000–$1,200,000";
+  if (score >= 74) return "$250,000–$500,000";
+  if (score >= 66) return "$100,000–$250,000";
+  if (score >= 58) return "$50,000–$100,000";
+  if (score >= 50) return "$20,000–$50,000";
+  return "$0–$20,000";
+}
+
+function generateDraftResultForTier(score) {
+  // This creates a rough exact pick inside the score's range.
+  // Higher score = higher pick, but still some uncertainty.
+  if (score >= 90) {
+    const round = 1;
+    const pick = Math.floor(Math.random() * 10) + 1;
+    return { round, pick };
+  }
+  if (score >= 82) {
+    const round = Math.floor(Math.random() * 2) + 1;
+    const pick = Math.floor(Math.random() * 30) + 1;
+    return { round, pick };
+  }
+  if (score >= 74) {
+    const round = Math.floor(Math.random() * 2) + 2;
+    const pick = Math.floor(Math.random() * 60) + 1;
+    return { round, pick };
+  }
+  if (score >= 66) {
+    const round = Math.floor(Math.random() * 4) + 4;
+    const pick = Math.floor(Math.random() * 120) + 1;
+    return { round, pick };
+  }
+  if (score >= 58) {
+    const round = Math.floor(Math.random() * 6) + 10;
+    const pick = Math.floor(Math.random() * 200) + 1;
+    return { round, pick };
+  }
+  if (score >= 50) {
+    const round = Math.floor(Math.random() * 6) + 15;
+    const pick = Math.floor(Math.random() * 200) + 1;
+    return { round, pick };
+  }
+  return { round: null, pick: null };
+}
+
 function evaluateDraftStock() {
   if (!state.player) return;
 
@@ -181,9 +230,34 @@ function evaluateDraftStock() {
   player.draftStock = computeDraftStock(player);
   player.draftTier = getDraftTierFromScore(player.draftStock);
   player.careerPath = "draft-evaluation";
+  player.organizationLevel = "Draft Decision";
+
+  const draftResult = generateDraftResultForTier(player.draftStock);
+  player.draftRound = draftResult.round;
+  player.draftPick = draftResult.pick;
+  player.signingBonus = getSigningBonusLabel(player.draftStock);
 
   logMessage(`${player.name}'s draft stock is ${player.draftStock.toFixed(1)} (${player.draftTier}).`);
+  logMessage(`${player.name} is projected to land around ${draftResult.round ? `Round ${draftResult.round}` : "undrafted"}.`);
+  showDraftDecisionPanel();
   updatePlayerDisplay();
+}
+
+function showDraftDecisionPanel() {
+  const panel = document.getElementById("draft-panel");
+  const summary = document.getElementById("draft-summary");
+  if (!panel || !summary || !state.player) return;
+
+  const player = state.player;
+  summary.innerHTML = `
+    <div><strong>${player.name}</strong> is projected as a <strong>${player.draftTier}</strong> talent.</div>
+    <div>Draft Stock: <strong>${player.draftStock.toFixed(1)}</strong></div>
+    <div>Estimated draft range: <strong>${player.draftRound ? `Round ${player.draftRound}` : "Undrafted"}</strong></div>
+    <div>Estimated signing bonus: <strong>${player.signingBonus}</strong></div>
+    <div>Decision: sign now or return to college and improve your value.</div>
+  `;
+
+  panel.style.display = "block";
 }
 
 function chooseCollegePath() {
@@ -193,6 +267,7 @@ function chooseCollegePath() {
   player.careerPath = "college";
   player.collegeYears = 1;
   player.organizationLevel = "College";
+  document.getElementById("draft-panel").style.display = "none";
   logMessage(`${player.name} opts to attend college and develop before turning pro.`);
   updatePlayerDisplay();
 }
@@ -204,6 +279,7 @@ function signDraftOffer() {
   player.careerPath = "professional";
   player.organizationLevel = "Double-A";
   player.season = 1;
+  document.getElementById("draft-panel").style.display = "none";
   logMessage(`${player.name} signs and begins the professional path in Double-A.`);
   updatePlayerDisplay();
 }
@@ -311,13 +387,11 @@ function simulateHighSchoolPlayoffGame() {
 
   const player = state.player;
   const gameLength = 4;
-  let gamePower = 0;
 
   for (let i = 0; i < gameLength; i += 1) {
     const actionPool = ["contact", "power", "walk", "contact"];
     const randomAction = actionPool[Math.floor(Math.random() * actionPool.length)];
     resolveAtBat(randomAction);
-    gamePower += 1;
   }
 
   const playerProduction = player.homeRuns * 4 + player.singles + player.doubles * 2 + player.triples * 3 + player.walks;
@@ -357,6 +431,11 @@ function loadScheduleForYear(year, team) {
 
 function nextGame() {
   if (!state.player) return;
+
+  if (state.player.careerPath === "draft-evaluation") {
+    logMessage("Draft decision pending. Sign or decline before continuing.");
+    return;
+  }
 
   if (state.player.careerPath === "high-school") {
     simulateHighSchoolPlayoffGame();
@@ -468,6 +547,7 @@ function startCareer() {
   document.getElementById("next-game-btn").style.display = "inline-block";
   document.getElementById("end-season-btn").style.display = "inline-block";
   document.getElementById("skill-upgrade-panel").style.display = "block";
+  document.getElementById("draft-panel").style.display = "none";
   logMessage(`${player.name} enters his senior playoff run at age 18.`);
   updatePlayerDisplay();
 }
@@ -495,6 +575,10 @@ function bindControls() {
         logMessage("Create a player first.");
         return;
       }
+      if (state.player.careerPath === "draft-evaluation") {
+        logMessage("Draft decision pending. Sign or decline before playing more.");
+        return;
+      }
       const action = button.dataset.action;
       resolveAtBat(action);
     });
@@ -516,11 +600,6 @@ function bindControls() {
       advanceSeason();
       logMessage("Season ended. Prepare for next year.");
     });
-  }
-
-  const evaluateDraftBtn = document.getElementById("evaluate-draft-btn");
-  if (evaluateDraftBtn) {
-    evaluateDraftBtn.addEventListener("click", evaluateDraftStock);
   }
 
   const collegeBtn = document.getElementById("go-college-btn");
