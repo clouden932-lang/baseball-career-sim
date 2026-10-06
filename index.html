@@ -11,31 +11,121 @@
       <header class="topbar">
         <h1>Baseball Career Sim</h1>
         <button id="new-player-btn">New Player</button>
+        <button id="save-btn" style="display:none;">Save</button>
       </header>
 
-      <main class="game-panel">
-        <section class="player-card">
-          <h2>Player</h2>
-          <div id="player-info">Create a player to begin.</div>
-        </section>
-
-        <section class="controls">
-          <h2>At-Bat</h2>
-          <div class="button-row">
-            <button class="action-btn" data-action="power">Swing for Power</button>
-            <button class="action-btn" data-action="contact">Swing for Contact</button>
-            <button class="action-btn" data-action="bunt">Bunt</button>
-            <button class="action-btn" data-action="walk">Work Count</button>
+      <!-- CHARACTER CREATION SCREEN -->
+      <div id="character-creation-screen" class="screen">
+        <h2>Create Your Player</h2>
+        <div class="creation-form">
+          <div class="form-group">
+            <label>Player Name:</label>
+            <input type="text" id="player-name-input" placeholder="Enter name" />
           </div>
-        </section>
 
-        <section class="log-box">
-          <h2>Game Log</h2>
-          <div id="log"></div>
-        </section>
-      </main>
+          <div class="form-group">
+            <label>Year:</label>
+            <select id="year-select">
+              <option value="1927">1927</option>
+              <option value="1968">1968</option>
+              <option value="1999" selected>1999</option>
+              <option value="2024">2024</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Starting Team:</label>
+            <select id="team-select">
+              <option value="rookie">Rookie League</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <h3>Allocate 10 Skill Points (Start with 5 in each skill)</h3>
+            <p class="skill-points-remaining">Remaining: <span id="remaining-points">10</span></p>
+            
+            <div class="skill-allocation">
+              <div class="skill-row">
+                <label>Contact:</label>
+                <span>5 + <input type="number" class="skill-input" data-skill="contact" min="0" max="10" value="0" /> = <span class="skill-total">5</span></span>
+              </div>
+              <div class="skill-row">
+                <label>Power:</label>
+                <span>5 + <input type="number" class="skill-input" data-skill="power" min="0" max="10" value="0" /> = <span class="skill-total">5</span></span>
+              </div>
+              <div class="skill-row">
+                <label>Speed:</label>
+                <span>5 + <input type="number" class="skill-input" data-skill="speed" min="0" max="10" value="0" /> = <span class="skill-total">5</span></span>
+              </div>
+              <div class="skill-row">
+                <label>Coordination:</label>
+                <span>5 + <input type="number" class="skill-input" data-skill="coordination" min="0" max="10" value="0" /> = <span class="skill-total">5</span></span>
+              </div>
+              <div class="skill-row">
+                <label>Endurance:</label>
+                <span>5 + <input type="number" class="skill-input" data-skill="endurance" min="0" max="10" value="0" /> = <span class="skill-total">5</span></span>
+              </div>
+              <div class="skill-row">
+                <label>IQ:</label>
+                <span>5 + <input type="number" class="skill-input" data-skill="iq" min="0" max="10" value="0" /> = <span class="skill-total">5</span></span>
+              </div>
+            </div>
+          </div>
+
+          <button id="start-career-btn">Start Career</button>
+        </div>
+      </div>
+
+      <!-- MAIN GAME SCREEN -->
+      <div id="game-screen" class="screen" style="display:none;">
+        <main class="game-panel">
+          <section class="player-card">
+            <h2>Player Card</h2>
+            <div id="player-info">Loading...</div>
+          </section>
+
+          <section class="season-info">
+            <h2>Season Info</h2>
+            <div id="season-details">Loading...</div>
+          </section>
+
+          <section class="controls">
+            <h2>At-Bat</h2>
+            <div class="button-row">
+              <button class="action-btn" data-action="power">Swing for Power</button>
+              <button class="action-btn" data-action="contact">Swing for Contact</button>
+              <button class="action-btn" data-action="bunt">Bunt</button>
+              <button class="action-btn" data-action="walk">Work Count</button>
+            </div>
+          </section>
+
+          <section class="skill-upgrade-panel" id="skill-upgrade-panel" style="display:none;">
+            <h2>Upgrade Skills</h2>
+            <p id="skill-points-display">Skill Points Available: 0</p>
+            <div class="skill-buttons">
+              <button class="skill-upgrade-btn" data-skill="contact">Contact</button>
+              <button class="skill-upgrade-btn" data-skill="power">Power</button>
+              <button class="skill-upgrade-btn" data-skill="speed">Speed</button>
+              <button class="skill-upgrade-btn" data-skill="coordination">Coordination</button>
+              <button class="skill-upgrade-btn" data-skill="endurance">Endurance</button>
+              <button class="skill-upgrade-btn" data-skill="iq">IQ</button>
+            </div>
+          </section>
+
+          <section class="log-box">
+            <h2>Game Log</h2>
+            <div id="log"></div>
+          </section>
+
+          <section class="season-nav">
+            <button id="next-game-btn" style="display:none;">Next Game</button>
+            <button id="end-season-btn" style="display:none;">End Season</button>
+          </section>
+        </main>
+      </div>
     </div>
 
+    <script src="mlb-schedules.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
