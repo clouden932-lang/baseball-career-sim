@@ -5,7 +5,9 @@ const state = {
   schedule: [],
   scheduleIndex: 0,
   gameLog: [],
-  bonusPoints: 10
+  bonusPoints: 10,
+  collegeMode: false,
+  draftRound: null
 };
 
 function logMessage(message) {
@@ -34,11 +36,16 @@ function resetBonusPoints() {
   updateBonusPointsDisplay();
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
 function createPlayer(name, year, team) {
   const player = {
     name: name || "Rookie",
     year,
     team,
+    age: 18,
     season: 1,
     level: 1,
     xp: 0,
@@ -57,7 +64,15 @@ function createPlayer(name, year, team) {
     speed: getBaseSkillValue(),
     coordination: getBaseSkillValue(),
     endurance: getBaseSkillValue(),
-    iq: getBaseSkillValue()
+    iq: getBaseSkillValue(),
+    careerPath: "high-school",
+    playoffWins: 0,
+    playoffGames: 0,
+    playoffRound: 1,
+    draftStock: 0,
+    draftTier: "Undecided",
+    collegeYears: 0,
+    organizationLevel: "High School Playoffs"
   };
 
   state.player = player;
@@ -105,27 +120,91 @@ function awardXP(amount) {
   updatePlayerDisplay();
 }
 
-function allocateSkill(skillName) {
-  if (!state.player) return;
-
-  if (state.bonusPoints <= 0) {
-    logMessage("No bonus points left.");
-    return;
-  }
-
-  state.player[skillName] += 1;
-  state.bonusPoints -= 1;
-  updateBonusPointsDisplay();
-  updatePlayerDisplay();
-  logMessage(`${state.player.name} increased ${skillName} to ${state.player[skillName]}.`);
-}
-
 function advanceSeason() {
   if (!state.player) return;
 
   state.player.season += 1;
   state.player.skillPoints += 2;
   logMessage(`Season ${state.player.season} begins.`);
+  updatePlayerDisplay();
+}
+
+function getToolsScore(player) {
+  const values = SKILLS.map((skill) => player[skill]);
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  return (average / 45) * 35;
+}
+
+function getPerformanceScore(player) {
+  const totalPa = Math.max(1, player.atBats + player.walks + player.singles + player.doubles + player.triples + player.homeRuns);
+  const avg = (player.singles + player.doubles + player.triples + player.homeRuns) / totalPa;
+  return clamp((avg * 120) + (player.homeRuns * 3) + (player.walks * 0.5) + (player.playoffWins * 4), 0, 45);
+}
+
+function getPotentialScore(player) {
+  const age = Number(player.age) || 18;
+  const room = clamp(15 - ((age - 18) * 1.2), 0, 15);
+  return room;
+}
+
+function getContextScore(player) {
+  let score = 2;
+  if (player.playoffWins >= 2) score += 1;
+  if (player.homeRuns >= 2) score += 1;
+  if (player.playoffRound >= 3) score += 1;
+  return clamp(score, 0, 5);
+}
+
+function computeDraftStock(player) {
+  const performanceScore = getPerformanceScore(player);
+  const toolsScore = getToolsScore(player);
+  const potentialScore = getPotentialScore(player);
+  const contextScore = getContextScore(player);
+
+  return clamp(performanceScore + toolsScore + potentialScore + contextScore, 0, 100);
+}
+
+function getDraftTierFromScore(score) {
+  if (score >= 90) return "Elite / Top of draft";
+  if (score >= 82) return "1st round";
+  if (score >= 74) return "Rounds 2–3";
+  if (score >= 66) return "Rounds 4–7";
+  if (score >= 58) return "Late-round pick";
+  if (score >= 50) return "Fringe draft candidate";
+  return "Undrafted";
+}
+
+function evaluateDraftStock() {
+  if (!state.player) return;
+
+  const player = state.player;
+  player.draftStock = computeDraftStock(player);
+  player.draftTier = getDraftTierFromScore(player.draftStock);
+  player.careerPath = "draft-evaluation";
+
+  logMessage(`${player.name}'s draft stock is ${player.draftStock.toFixed(1)} (${player.draftTier}).`);
+  updatePlayerDisplay();
+}
+
+function chooseCollegePath() {
+  if (!state.player) return;
+
+  const player = state.player;
+  player.careerPath = "college";
+  player.collegeYears = 1;
+  player.organizationLevel = "College";
+  logMessage(`${player.name} opts to attend college and develop before turning pro.`);
+  updatePlayerDisplay();
+}
+
+function signDraftOffer() {
+  if (!state.player) return;
+
+  const player = state.player;
+  player.careerPath = "professional";
+  player.organizationLevel = "Double-A";
+  player.season = 1;
+  logMessage(`${player.name} signs and begins the professional path in Double-A.`);
   updatePlayerDisplay();
 }
 
@@ -227,6 +306,41 @@ function resolveAtBat(action) {
   updatePlayerDisplay();
 }
 
+function simulateHighSchoolPlayoffGame() {
+  if (!state.player) return;
+
+  const player = state.player;
+  const gameLength = 4;
+  let gamePower = 0;
+
+  for (let i = 0; i < gameLength; i += 1) {
+    const actionPool = ["contact", "power", "walk", "contact"];
+    const randomAction = actionPool[Math.floor(Math.random() * actionPool.length)];
+    resolveAtBat(randomAction);
+    gamePower += 1;
+  }
+
+  const playerProduction = player.homeRuns * 4 + player.singles + player.doubles * 2 + player.triples * 3 + player.walks;
+  const wonGame = playerProduction >= 9 || player.homeRuns >= 2;
+
+  player.playoffGames += 1;
+  player.playoffRound += 1;
+
+  if (wonGame) {
+    player.playoffWins += 1;
+    logMessage(`${player.name} won the playoff game and helped advance the team.`);
+  } else {
+    logMessage(`${player.name} had a tough playoff game, but his team came up short.`);
+  }
+
+  if (player.playoffWins >= 4 || player.playoffGames >= 4) {
+    logMessage(`${player.name} finished his high-school playoff run.`);
+    evaluateDraftStock();
+  }
+
+  updatePlayerDisplay();
+}
+
 function loadScheduleForYear(year, team) {
   const scheduleLookup = window.MLB_SCHEDULES || {};
   const yearSchedule = scheduleLookup[String(year)] || {};
@@ -243,6 +357,11 @@ function loadScheduleForYear(year, team) {
 
 function nextGame() {
   if (!state.player) return;
+
+  if (state.player.careerPath === "high-school") {
+    simulateHighSchoolPlayoffGame();
+    return;
+  }
 
   if (state.scheduleIndex >= state.schedule.length) {
     logMessage("Season complete. End of schedule.");
@@ -265,12 +384,16 @@ function updatePlayerDisplay() {
 
   playerInfoEl.innerHTML = `
     <div><strong>Name:</strong> ${player.name}</div>
+    <div><strong>Age:</strong> ${player.age}</div>
     <div><strong>Team:</strong> ${player.team}</div>
+    <div><strong>Path:</strong> ${player.careerPath}</div>
+    <div><strong>Organization:</strong> ${player.organizationLevel}</div>
     <div><strong>Year:</strong> ${player.year}</div>
     <div><strong>Season:</strong> ${player.season}</div>
     <div><strong>Level:</strong> ${player.level}</div>
     <div><strong>XP:</strong> ${player.xp}/100</div>
-    <div><strong>Skill points:</strong> ${player.skillPoints}</div>
+    <div><strong>Draft Stock:</strong> ${player.draftStock ? player.draftStock.toFixed(1) : "N/A"}</div>
+    <div><strong>Draft Tier:</strong> ${player.draftTier || "Not evaluated yet"}</div>
     <div class="stat-line"><span>Contact</span><span>${player.contact}</span></div>
     <div class="stat-line"><span>Power</span><span>${player.power}</span></div>
     <div class="stat-line"><span>Speed</span><span>${player.speed}</span></div>
@@ -282,7 +405,8 @@ function updatePlayerDisplay() {
   `;
 
   seasonDetailsEl.innerHTML = `
-    <div><strong>Games played:</strong> ${player.gamesPlayed}</div>
+    <div><strong>Playoff games:</strong> ${player.playoffGames}</div>
+    <div><strong>Playoff wins:</strong> ${player.playoffWins}</div>
     <div><strong>Singles:</strong> ${player.singles}</div>
     <div><strong>Doubles:</strong> ${player.doubles}</div>
     <div><strong>Triples:</strong> ${player.triples}</div>
@@ -336,13 +460,15 @@ function bindSkillButtons() {
 
 function startCareer() {
   const player = setPlayerFromCreation();
+  player.careerPath = "high-school";
+  player.organizationLevel = "High School Playoffs";
   loadScheduleForYear(player.year, player.team);
   document.getElementById("character-creation-screen").style.display = "none";
   document.getElementById("game-screen").style.display = "block";
   document.getElementById("next-game-btn").style.display = "inline-block";
   document.getElementById("end-season-btn").style.display = "inline-block";
   document.getElementById("skill-upgrade-panel").style.display = "block";
-  logMessage(`${player.name} is ready to play for the ${player.team}.`);
+  logMessage(`${player.name} enters his senior playoff run at age 18.`);
   updatePlayerDisplay();
 }
 
@@ -382,9 +508,29 @@ function bindControls() {
   const endSeasonBtn = document.getElementById("end-season-btn");
   if (endSeasonBtn) {
     endSeasonBtn.addEventListener("click", () => {
+      if (state.player && state.player.careerPath === "high-school") {
+        evaluateDraftStock();
+        logMessage("High-school playoff evaluation complete.");
+        return;
+      }
       advanceSeason();
       logMessage("Season ended. Prepare for next year.");
     });
+  }
+
+  const evaluateDraftBtn = document.getElementById("evaluate-draft-btn");
+  if (evaluateDraftBtn) {
+    evaluateDraftBtn.addEventListener("click", evaluateDraftStock);
+  }
+
+  const collegeBtn = document.getElementById("go-college-btn");
+  if (collegeBtn) {
+    collegeBtn.addEventListener("click", chooseCollegePath);
+  }
+
+  const signDraftBtn = document.getElementById("sign-draft-btn");
+  if (signDraftBtn) {
+    signDraftBtn.addEventListener("click", signDraftOffer);
   }
 }
 
