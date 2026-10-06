@@ -6,7 +6,7 @@ const COLLEGE_SCHOOLS = [
     name: "Northern State U",
     tag: "Analytical baseball IQ",
     bonus: { iq: 2, coordination: 1 },
-    draftBonus: 8,
+    draftBonus: 5,
     summary: "A high-academic program that rewards discipline and game understanding."
   },
   {
@@ -14,7 +14,7 @@ const COLLEGE_SCHOOLS = [
     name: "Central U",
     tag: "Speed-first development",
     bonus: { speed: 2, endurance: 1 },
-    draftBonus: 8,
+    draftBonus: 5,
     summary: "Built for athletes who thrive in chaos and pressure with elite baserunning."
   },
   {
@@ -22,7 +22,7 @@ const COLLEGE_SCHOOLS = [
     name: "West Valley State",
     tag: "Contact and plate discipline",
     bonus: { contact: 2, iq: 1 },
-    draftBonus: 8,
+    draftBonus: 5,
     summary: "A player-friendly program that turns good hitters into dependable starters."
   },
   {
@@ -30,7 +30,7 @@ const COLLEGE_SCHOOLS = [
     name: "South Tech",
     tag: "Conditioning and stamina",
     bonus: { endurance: 2, power: 1 },
-    draftBonus: 8,
+    draftBonus: 5,
     summary: "The program is famous for turning raw talent into durable, everyday contributors."
   },
   {
@@ -38,7 +38,7 @@ const COLLEGE_SCHOOLS = [
     name: "Riverside U",
     tag: "Defense and coordination",
     bonus: { coordination: 2, speed: 1 },
-    draftBonus: 8,
+    draftBonus: 5,
     summary: "A balanced school with a premium on smooth defensive play and athleticism."
   },
   {
@@ -46,7 +46,7 @@ const COLLEGE_SCHOOLS = [
     name: "Midwest Tech",
     tag: "Power development",
     bonus: { power: 2, contact: 1 },
-    draftBonus: 9,
+    draftBonus: 6,
     summary: "A slugger factory that raises raw power into true draft-level threats."
   }
 ];
@@ -56,7 +56,8 @@ const state = {
   schedule: [],
   scheduleIndex: 0,
   gameLog: [],
-  bonusPoints: 10
+  bonusPoints: 10,
+  selectedCollege: null
 };
 
 function logMessage(message) {
@@ -85,12 +86,17 @@ function resetBonusPoints() {
   updateBonusPointsDisplay();
 }
 
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
 function createPlayer(name, year, team) {
   const player = {
     name: name || "Rookie",
     year,
     team,
     season: 1,
+    age: 18,
     level: 1,
     xp: 0,
     skillPoints: 0,
@@ -109,9 +115,12 @@ function createPlayer(name, year, team) {
     coordination: getBaseSkillValue(),
     endurance: getBaseSkillValue(),
     iq: getBaseSkillValue(),
+    careerPath: "high-school",
     college: null,
     draftStock: 0,
-    collegeBonus: 0
+    draftTier: "Undecided",
+    collegeBonus: 0,
+    organizationLevel: "High School Playoffs"
   };
 
   state.player = player;
@@ -183,26 +192,34 @@ function advanceSeason() {
   updatePlayerDisplay();
 }
 
+function getDraftTier(score) {
+  if (score >= 90) return "Elite / Top 5";
+  if (score >= 80) return "1st Round";
+  if (score >= 70) return "Day 2";
+  if (score >= 60) return "Late Round";
+  return "Undrafted";
+}
+
 function evaluateDraftStock(player = state.player) {
   if (!player) return 0;
 
   const weights = {
-    contact: 2.2,
-    iq: 2.0,
-    power: 1.9,
-    speed: 1.6,
-    coordination: 1.4,
-    endurance: 1.3
+    contact: 1.7,
+    iq: 1.5,
+    power: 1.5,
+    speed: 1.2,
+    coordination: 1.1,
+    endurance: 1.0
   };
 
-  const total = Object.entries(weights).reduce((sum, [skill, weight]) => {
+  const weightedSkillScore = Object.entries(weights).reduce((sum, [skill, weight]) => {
     return sum + player[skill] * weight;
-  }, 30);
+  }, 25);
 
-  const seasonBoost = Math.max(0, player.season - 1) * 4;
-  const collegeBoost = player.collegeBonus || 0;
+  const seasonBoost = Math.max(0, player.season - 1) * 3;
+  const schoolBoost = player.collegeBonus || 0;
 
-  return Math.round(total + seasonBoost + collegeBoost);
+  return Math.round(weightedSkillScore + seasonBoost + schoolBoost);
 }
 
 function renderCollegeSelection() {
@@ -238,6 +255,7 @@ function chooseCollegeSchool(schoolKey) {
 
   state.player.college = school.name;
   state.player.collegeBonus = school.draftBonus;
+  state.selectedCollege = school;
 
   Object.keys(school.bonus).forEach((skill) => {
     if (state.player[skill] !== undefined) {
@@ -246,8 +264,10 @@ function chooseCollegeSchool(schoolKey) {
   });
 
   state.player.draftStock = evaluateDraftStock(state.player);
+  state.player.draftTier = getDraftTier(state.player.draftStock);
+
   logMessage(`${state.player.name} committed to ${school.name}. ${school.tag}.`);
-  updatePlayerDisplay();
+  logMessage(`${state.player.name}'s draft stock rises to ${state.player.draftStock} (${state.player.draftTier}).`);
 
   const panel = document.getElementById("college-selection-panel");
   if (panel) {
@@ -255,11 +275,47 @@ function chooseCollegeSchool(schoolKey) {
       <h2>College Decision</h2>
       <div class="college-choice-confirmation">
         <strong>${school.name}</strong>
-        <span>Draft Stock: ${state.player.draftStock}</span>
-        <span>Bonus: +${school.draftBonus} draft stock</span>
+        <span>Draft stock: ${state.player.draftStock}</span>
+        <span>Tier: ${state.player.draftTier}</span>
       </div>
     `;
   }
+
+  updatePlayerDisplay();
+}
+
+function chooseCollegePath() {
+  if (!state.player) return;
+
+  const draftPanel = document.getElementById("draft-panel");
+  if (draftPanel) {
+    draftPanel.style.display = "none";
+  }
+
+  const collegePanel = document.getElementById("college-selection-panel");
+  if (collegePanel) {
+    renderCollegeSelection();
+    collegePanel.style.display = "block";
+  }
+
+  logMessage(`${state.player.name} evaluates college offers.`);
+}
+
+function signDraftOffer() {
+  if (!state.player) return;
+
+  const player = state.player;
+  player.careerPath = "professional";
+  player.organizationLevel = "Double-A";
+  player.season = 1;
+
+  const draftPanel = document.getElementById("draft-panel");
+  if (draftPanel) {
+    draftPanel.style.display = "none";
+  }
+
+  logMessage(`${player.name} signs and begins the professional path in Double-A.`);
+  updatePlayerDisplay();
 }
 
 function chooseOutcome(action) {
@@ -360,6 +416,35 @@ function resolveAtBat(action) {
   updatePlayerDisplay();
 }
 
+function simulateHighSchoolPlayoffGame() {
+  if (!state.player) return;
+
+  const player = state.player;
+  const gameLength = 4;
+
+  for (let i = 0; i < gameLength; i += 1) {
+    const actionPool = ["contact", "power", "walk", "contact"];
+    const randomAction = actionPool[Math.floor(Math.random() * actionPool.length)];
+    resolveAtBat(randomAction);
+  }
+
+  const playerProduction = player.homeRuns * 4 + player.singles + player.doubles * 2 + player.triples * 3 + player.walks;
+  const wonGame = playerProduction >= 9 || player.homeRuns >= 2;
+
+  player.season += 0;
+  player.gamesPlayed += 1;
+
+  if (wonGame) {
+    logMessage(`${player.name} won the playoff game and helped advance the team.`);
+  } else {
+    logMessage(`${player.name} had a tough playoff game, but his team came up short.`);
+  }
+
+  state.player.draftStock = evaluateDraftStock(state.player);
+  state.player.draftTier = getDraftTier(state.player.draftStock);
+  updatePlayerDisplay();
+}
+
 function loadScheduleForYear(year, team) {
   const scheduleLookup = window.MLB_SCHEDULES || {};
   const yearSchedule = scheduleLookup[String(year)] || {};
@@ -377,6 +462,21 @@ function loadScheduleForYear(year, team) {
 function nextGame() {
   if (!state.player) return;
 
+  if (state.player.careerPath === "draft-evaluation") {
+    logMessage("Draft decision pending. Sign or decline before continuing.");
+    return;
+  }
+
+  if (state.player.careerPath === "high-school") {
+    simulateHighSchoolPlayoffGame();
+    return;
+  }
+
+  if (state.player.careerPath === "college") {
+    logMessage(`${state.player.name} is playing at ${state.player.college}.`);
+    return;
+  }
+
   if (state.scheduleIndex >= state.schedule.length) {
     logMessage("Season complete. End of schedule.");
     return;
@@ -390,22 +490,48 @@ function nextGame() {
   updatePlayerDisplay();
 }
 
+function showDraftDecisionPanel() {
+  const panel = document.getElementById("draft-panel");
+  const summary = document.getElementById("draft-summary");
+  if (!panel || !summary || !state.player) return;
+
+  const player = state.player;
+  player.careerPath = "draft-evaluation";
+  player.organizationLevel = "Draft Decision";
+
+  player.draftStock = evaluateDraftStock(player);
+  player.draftTier = getDraftTier(player.draftStock);
+
+  summary.innerHTML = `
+    <div><strong>${player.name}</strong> is projected as a <strong>${player.draftTier}</strong> talent.</div>
+    <div>Draft Stock: <strong>${player.draftStock}</strong></div>
+    <div>Decision: sign now or choose a college program that fits your style.</div>
+  `;
+
+  panel.style.display = "block";
+}
+
 function updatePlayerDisplay() {
   const player = state.player;
   const playerInfoEl = document.getElementById("player-info");
   const seasonDetailsEl = document.getElementById("season-details");
   if (!player || !playerInfoEl || !seasonDetailsEl) return;
 
+  player.draftStock = evaluateDraftStock(player);
+  player.draftTier = getDraftTier(player.draftStock);
+
   playerInfoEl.innerHTML = `
     <div><strong>Name:</strong> ${player.name}</div>
-    <div><strong>Team:</strong> ${player.team}</div>
+    <div><strong>Age:</strong> ${player.age}</div>
     <div><strong>Year:</strong> ${player.year}</div>
+    <div><strong>Team:</strong> ${player.team}</div>
+    <div><strong>Path:</strong> ${player.careerPath}</div>
+    <div><strong>College:</strong> ${player.college || "Undecided"}</div>
+    <div><strong>Organization:</strong> ${player.organizationLevel}</div>
     <div><strong>Season:</strong> ${player.season}</div>
     <div><strong>Level:</strong> ${player.level}</div>
-    <div><strong>XP:</strong> ${player.xp}/100</div>
-    <div><strong>Skill points:</strong> ${player.skillPoints}</div>
-    <div><strong>College:</strong> ${player.college || "Undecided"}</div>
-    <div><strong>Draft stock:</strong> ${evaluateDraftStock(player)}</div>
+    <div><strong>Draft Stock:</strong> ${player.draftStock}</div>
+    <div><strong>Draft Tier:</strong> ${player.draftTier}</div>
     <div class="stat-line"><span>Contact</span><span>${player.contact}</span></div>
     <div class="stat-line"><span>Power</span><span>${player.power}</span></div>
     <div class="stat-line"><span>Speed</span><span>${player.speed}</span></div>
@@ -471,16 +597,20 @@ function bindSkillButtons() {
 
 function startCareer() {
   const player = setPlayerFromCreation();
+  player.careerPath = "high-school";
+  player.organizationLevel = "High School Playoffs";
   loadScheduleForYear(player.year, player.team);
   document.getElementById("character-creation-screen").style.display = "none";
   document.getElementById("game-screen").style.display = "block";
   document.getElementById("next-game-btn").style.display = "inline-block";
   document.getElementById("end-season-btn").style.display = "inline-block";
   document.getElementById("skill-upgrade-panel").style.display = "block";
-  renderCollegeSelection();
+  document.getElementById("draft-panel").style.display = "none";
+  document.getElementById("college-selection-panel").style.display = "none";
   player.draftStock = evaluateDraftStock(player);
-  logMessage(`${player.name} is ready to play for the ${player.team}.`);
-  logMessage(`Draft stock is ${player.draftStock}. Choose a college path.`);
+  player.draftTier = getDraftTier(player.draftStock);
+  logMessage(`${player.name} enters his senior playoff run at age 18.`);
+  logMessage(`Draft stock is ${player.draftStock} (${player.draftTier}). Choose the right path.`);
   updatePlayerDisplay();
 }
 
@@ -507,6 +637,10 @@ function bindControls() {
         logMessage("Create a player first.");
         return;
       }
+      if (state.player.careerPath === "draft-evaluation") {
+        logMessage("Draft decision pending. Sign or decline before playing more.");
+        return;
+      }
       const action = button.dataset.action;
       resolveAtBat(action);
     });
@@ -520,9 +654,24 @@ function bindControls() {
   const endSeasonBtn = document.getElementById("end-season-btn");
   if (endSeasonBtn) {
     endSeasonBtn.addEventListener("click", () => {
+      if (state.player && state.player.careerPath === "high-school") {
+        showDraftDecisionPanel();
+        logMessage("High-school playoff draft evaluation complete.");
+        return;
+      }
       advanceSeason();
       logMessage("Season ended. Prepare for next year.");
     });
+  }
+
+  const collegeBtn = document.getElementById("go-college-btn");
+  if (collegeBtn) {
+    collegeBtn.addEventListener("click", chooseCollegePath);
+  }
+
+  const signDraftBtn = document.getElementById("sign-draft-btn");
+  if (signDraftBtn) {
+    signDraftBtn.addEventListener("click", signDraftOffer);
   }
 }
 
@@ -542,5 +691,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindSkillButtons();
   bindControls();
   resetBonusPoints();
+  renderCollegeSelection();
+  document.getElementById("college-selection-panel").style.display = "none";
   logMessage("Welcome to Baseball Career Sim. Start by creating your player.");
 });
