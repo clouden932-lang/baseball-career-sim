@@ -1,5 +1,70 @@
 const SKILLS = ["contact", "power", "speed", "coordination", "endurance", "iq"];
 
+const SIDE_MISSIONS = [
+  {
+    id: "batting-cage",
+    title: "Batting Cage Work",
+    description: "Work on swing decisions against live-speed pitches.",
+    focus: "contact",
+    difficulty: 1,
+    xpReward: 3,
+    statBonus: "contact"
+  },
+  {
+    id: "speed-drills",
+    title: "Base Running Drills",
+    description: "Sharpen first-step burst and base awareness.",
+    focus: "speed",
+    difficulty: 2,
+    xpReward: 5,
+    statBonus: "speed"
+  },
+  {
+    id: "film-room",
+    title: "Film Review",
+    description: "Break down pitch selection and approach.",
+    focus: "iq",
+    difficulty: 2,
+    xpReward: 5,
+    statBonus: "iq"
+  },
+  {
+    id: "conditioning",
+    title: "Conditioning Block",
+    description: "Push stamina and durability limits.",
+    focus: "endurance",
+    difficulty: 2,
+    xpReward: 5,
+    statBonus: "endurance"
+  },
+  {
+    id: "power-session",
+    title: "Power Development",
+    description: "Work on bat speed and launch angle.",
+    focus: "power",
+    difficulty: 3,
+    xpReward: 8,
+    statBonus: "power"
+  },
+  {
+    id: "coordination-work",
+    title: "Coordination Drills",
+    description: "Improve hand-eye rhythm and timing consistency.",
+    focus: "coordination",
+    difficulty: 2,
+    xpReward: 5,
+    statBonus: "coordination"
+  }
+];
+
+const TRIVIA = [
+  "Contact is often the most valuable everyday skill for a young hitter.",
+  "Elite speed can change how often a player reaches base without a hit.",
+  "Power is useful, but plate discipline and contact create consistency.",
+  "A disciplined approach often matters more than raw power in the draft process.",
+  "The best prospect profiles often blend contact and IQ before pure power."
+];
+
 const COLLEGE_SCHOOLS = [
   {
     key: "northern-state",
@@ -57,7 +122,8 @@ const state = {
   scheduleIndex: 0,
   gameLog: [],
   bonusPoints: 10,
-  selectedCollege: null
+  selectedCollege: null,
+  missionOptions: []
 };
 
 function logMessage(message) {
@@ -88,6 +154,18 @@ function resetBonusPoints() {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function getGamesPerSeasonForPlayer(player = state.player) {
+  if (!player) return 0;
+
+  if (player.careerPath === "high-school") return 10;
+  if (player.careerPath === "college") return 40;
+  if (player.organizationLevel === "Double-A") return 40;
+  if (player.organizationLevel === "Triple-A") return 80;
+  if (player.careerPath === "professional") return 160;
+
+  return 40;
 }
 
 function createPlayer(name, year, team) {
@@ -265,6 +343,8 @@ function chooseCollegeSchool(schoolKey) {
 
   state.player.draftStock = evaluateDraftStock(state.player);
   state.player.draftTier = getDraftTier(state.player.draftStock);
+  state.player.careerPath = "college";
+  state.player.organizationLevel = "College";
 
   logMessage(`${state.player.name} committed to ${school.name}. ${school.tag}.`);
   logMessage(`${state.player.name}'s draft stock rises to ${state.player.draftStock} (${state.player.draftTier}).`);
@@ -282,6 +362,71 @@ function chooseCollegeSchool(schoolKey) {
   }
 
   updatePlayerDisplay();
+}
+
+function generateSideMissionOptions() {
+  const shuffled = [...SIDE_MISSIONS].sort(() => Math.random() - 0.5);
+  state.missionOptions = shuffled.slice(0, 3);
+  renderSideMissions();
+}
+
+function renderSideMissions() {
+  const panel = document.getElementById("side-missions-panel");
+  if (!panel) return;
+
+  if (!state.missionOptions.length) {
+    panel.innerHTML = "<h2>Side Missions</h2><p>No missions available yet.</p>";
+    return;
+  }
+
+  panel.innerHTML = `
+    <h2>Side Missions</h2>
+    <div class="mission-grid">
+      ${state.missionOptions.map((mission) => `
+        <div class="mission-card">
+          <div class="mission-title">${mission.title}</div>
+          <div class="mission-focus">Focus: ${mission.focus}</div>
+          <div class="mission-description">${mission.description}</div>
+          <div class="mission-reward">Reward: +${mission.xpReward} XP</div>
+          <button class="mission-btn" data-mission-id="${mission.id}">Take Mission</button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+
+  panel.querySelectorAll(".mission-btn").forEach((button) => {
+    button.addEventListener("click", () => completeSideMission(button.dataset.missionId));
+  });
+}
+
+function completeSideMission(missionId) {
+  if (!state.player) return;
+
+  const mission = state.missionOptions.find((entry) => entry.id === missionId);
+  if (!mission) return;
+
+  state.player.xp += mission.xpReward;
+
+  if (state.player[mission.statBonus] !== undefined) {
+    state.player[mission.statBonus] += 1;
+  }
+
+  while (state.player.xp >= 100) {
+    state.player.xp -= 100;
+    state.player.level += 1;
+    state.player.skillPoints += 1;
+  }
+
+  state.missionOptions = state.missionOptions.filter((entry) => entry.id !== missionId);
+  logMessage(`${state.player.name} completed: ${mission.title} (+${mission.xpReward} XP).`);
+  awardTrivia();
+  renderSideMissions();
+  updatePlayerDisplay();
+}
+
+function awardTrivia() {
+  const fact = TRIVIA[Math.floor(Math.random() * TRIVIA.length)];
+  logMessage(`Trivia: ${fact}`);
 }
 
 function chooseCollegePath() {
@@ -431,7 +576,6 @@ function simulateHighSchoolPlayoffGame() {
   const playerProduction = player.homeRuns * 4 + player.singles + player.doubles * 2 + player.triples * 3 + player.walks;
   const wonGame = playerProduction >= 9 || player.homeRuns >= 2;
 
-  player.season += 0;
   player.gamesPlayed += 1;
 
   if (wonGame) {
@@ -477,8 +621,16 @@ function nextGame() {
     return;
   }
 
+  const seasonLength = getGamesPerSeasonForPlayer(state.player);
+  if (state.player.gamesPlayed >= seasonLength) {
+    logMessage(`${state.player.name} has finished the season. Side missions are now available.`);
+    generateSideMissionOptions();
+    return;
+  }
+
   if (state.scheduleIndex >= state.schedule.length) {
     logMessage("Season complete. End of schedule.");
+    generateSideMissionOptions();
     return;
   }
 
@@ -543,8 +695,8 @@ function updatePlayerDisplay() {
   `;
 
   seasonDetailsEl.innerHTML = `
-    <div><strong>Games played:</strong> ${player.gamesPlayed}</div>
-    <div><strong>Singles:</strong> ${player.singles}</div>
+    <div><strong>Games played this season:</strong> ${player.gamesPlayed}</div>
+    <div><strong>Singes:</strong> ${player.singles}</div>
     <div><strong>Doubles:</strong> ${player.doubles}</div>
     <div><strong>Triples:</strong> ${player.triples}</div>
     <div><strong>Walks:</strong> ${player.walks}</div>
@@ -612,6 +764,7 @@ function startCareer() {
   logMessage(`${player.name} enters his senior playoff run at age 18.`);
   logMessage(`Draft stock is ${player.draftStock} (${player.draftTier}). Choose the right path.`);
   updatePlayerDisplay();
+  generateSideMissionOptions();
 }
 
 function bindControls() {
@@ -661,6 +814,7 @@ function bindControls() {
       }
       advanceSeason();
       logMessage("Season ended. Prepare for next year.");
+      generateSideMissionOptions();
     });
   }
 
@@ -691,6 +845,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindSkillButtons();
   bindControls();
   resetBonusPoints();
+  renderSideMissions();
   renderCollegeSelection();
   document.getElementById("college-selection-panel").style.display = "none";
   logMessage("Welcome to Baseball Career Sim. Start by creating your player.");

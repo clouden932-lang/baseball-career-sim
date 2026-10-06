@@ -51,7 +51,8 @@ button:hover {
 #next-game-btn,
 #end-season-btn,
 #sign-draft-btn,
-#go-college-btn {
+#go-college-btn,
+.mission-btn {
   background: #f4b400;
   color: #111;
 }
@@ -67,7 +68,8 @@ button:hover {
 .season-info,
 .skill-upgrade-panel,
 .draft-panel,
-#college-selection-panel {
+#college-selection-panel,
+#side-missions-panel {
   background: white;
   border-radius: 10px;
   padding: 20px;
@@ -160,14 +162,16 @@ button:hover {
 .draft-buttons,
 .skill-buttons,
 .season-nav,
-.college-grid {
+.college-grid,
+.mission-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
 .action-btn,
-.skill-upgrade-btn {
+.skill-upgrade-btn,
+.mission-btn {
   background: #0a7e3d;
   color: white;
   min-width: 150px;
@@ -175,7 +179,8 @@ button:hover {
 
 .skill-upgrade-panel,
 .draft-panel,
-#college-selection-panel {
+#college-selection-panel,
+#side-missions-panel {
   grid-column: 1 / -1;
 }
 
@@ -213,14 +218,16 @@ button:hover {
   min-width: 140px;
 }
 
-.college-grid {
+.college-grid,
+.mission-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 12px;
   margin-top: 12px;
 }
 
-.college-choice-btn {
+.college-choice-btn,
+.mission-card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -234,18 +241,22 @@ button:hover {
   text-align: left;
 }
 
-.school-name {
+.school-name,
+.mission-title {
   font-weight: bold;
   font-size: 1.1rem;
 }
 
-.school-tag {
+.school-tag,
+.mission-focus {
   color: #1c3d5a;
   font-weight: bold;
 }
 
 .school-summary,
-.school-bonus {
+.school-bonus,
+.mission-description,
+.mission-reward {
   font-size: 0.95rem;
   line-height: 1.4;
 }
