@@ -10,7 +10,7 @@ body {
 }
 
 .app {
-  max-width: 1000px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 20px;
 }
@@ -24,6 +24,7 @@ body {
   padding: 18px 20px;
   border-radius: 10px;
   margin-bottom: 20px;
+  gap: 12px;
 }
 
 .topbar h1 {
@@ -37,50 +38,147 @@ button {
   padding: 10px 16px;
   cursor: pointer;
   font-weight: bold;
+  transition: opacity 0.2s ease;
 }
 
-#new-player-btn {
+button:hover {
+  opacity: 0.92;
+}
+
+#new-player-btn,
+#save-btn,
+#start-career-btn,
+#next-game-btn,
+#end-season-btn,
+#sign-draft-btn,
+#go-college-btn {
   background: #f4b400;
   color: #111;
 }
 
-.game-panel {
-  display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 20px;
+.screen {
+  background: transparent;
 }
 
+.creation-form,
 .player-card,
 .controls,
-.log-box {
+.log-box,
+.season-info,
+.skill-upgrade-panel,
+.draft-panel {
   background: white;
   border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.creation-form {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label,
+.skill-row label {
+  display: inline-block;
+  min-width: 120px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select,
+.skill-input {
+  width: 100%;
+  max-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.skill-points-remaining {
+  font-weight: bold;
+  margin-bottom: 12px;
+}
+
+.skill-allocation {
+  display: grid;
+  gap: 12px;
+}
+
+.skill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.skill-row span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.skill-input {
+  width: 66px;
+  max-width: 66px;
+  text-align: center;
+}
+
+#start-career-btn {
+  margin-top: 10px;
+}
+
+.game-panel {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 20px;
+}
+
+.player-card {
+  grid-column: 1;
+}
+
+.season-info {
+  grid-column: 2;
 }
 
 .controls {
   grid-column: 1 / -1;
 }
 
-.button-row {
+.button-row,
+.draft-buttons,
+.skill-buttons,
+.season-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-.action-btn {
+.action-btn,
+.skill-upgrade-btn {
   background: #0a7e3d;
   color: white;
   min-width: 150px;
 }
 
-.action-btn:hover,
-#new-player-btn:hover {
-  opacity: 0.9;
+.skill-upgrade-panel,
+.draft-panel {
+  grid-column: 1 / -1;
 }
 
-#player-info {
+#player-info,
+#season-details,
+#draft-summary {
   line-height: 1.7;
 }
 
@@ -103,12 +201,32 @@ button {
   border-bottom: 1px solid #eee;
 }
 
+.draft-buttons {
+  margin-top: 12px;
+}
+
+#sign-draft-btn,
+#go-college-btn {
+  min-width: 140px;
+}
+
+#save-btn {
+  display: none;
+}
+
 @media (max-width: 700px) {
   .game-panel {
     grid-template-columns: 1fr;
   }
+
   .topbar {
     flex-direction: column;
     gap: 10px;
+    align-items: flex-start;
+  }
+
+  .skill-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
