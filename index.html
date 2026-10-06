@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baseball Career Sim</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <h1>Baseball Career Sim</h1>
+        <button id="new-player-btn">New Player</button>
+      </header>
+
+      <main class="game-panel">
+        <section class="player-card">
+          <h2>Player</h2>
+          <div id="player-info">Create a player to begin.</div>
+        </section>
+
+        <section class="controls">
+          <h2>At-Bat</h2>
+          <div class="button-row">
+            <button class="action-btn" data-action="power">Swing for Power</button>
+            <button class="action-btn" data-action="contact">Swing for Contact</button>
+            <button class="action-btn" data-action="bunt">Bunt</button>
+            <button class="action-btn" data-action="walk">Work Count</button>
+          </div>
+        </section>
+
+        <section class="log-box">
+          <h2>Game Log</h2>
+          <div id="log"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
