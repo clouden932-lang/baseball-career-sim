@@ -142,9 +142,10 @@ function getBaseSkillValue() {
 
 function updateBonusPointsDisplay() {
   const bonusPointsEl = document.getElementById("bonus-points-left");
-  if (bonusPointsEl) {
-    bonusPointsEl.textContent = state.bonusPoints;
-  }
+  const remainingPointsEl = document.getElementById("remaining-points");
+
+  if (bonusPointsEl) bonusPointsEl.textContent = String(state.bonusPoints);
+  if (remainingPointsEl) remainingPointsEl.textContent = String(state.bonusPoints);
 }
 
 function resetBonusPoints() {
@@ -205,6 +206,46 @@ function createPlayer(name, year, team) {
   return player;
 }
 
+function bindSkillAllocationInputs() {
+  const skillInputs = document.querySelectorAll(".skill-input");
+
+  const syncSkillAllocation = () => {
+    let usedPoints = 0;
+
+    skillInputs.forEach((input) => {
+      const skillName = input.dataset.skill;
+      const totalEl = document.getElementById(`${skillName}-total`);
+      let parsedValue = Number.parseInt(input.value, 10) || 0;
+      parsedValue = clamp(parsedValue, 0, 10);
+      input.value = parsedValue;
+      usedPoints += parsedValue;
+
+      if (totalEl) {
+        totalEl.textContent = String(5 + parsedValue);
+      }
+    });
+
+    const remaining = 10 - usedPoints;
+    const remainingEl = document.getElementById("remaining-points");
+    if (remainingEl) {
+      remainingEl.textContent = String(Math.max(0, remaining));
+    }
+
+    const bonusPointEl = document.getElementById("bonus-points-left");
+    if (bonusPointEl) {
+      bonusPointEl.textContent = String(Math.max(0, remaining));
+    }
+
+    state.bonusPoints = Math.max(0, remaining);
+  };
+
+  skillInputs.forEach((input) => {
+    input.addEventListener("input", syncSkillAllocation);
+  });
+
+  syncSkillAllocation();
+}
+
 function setPlayerFromCreation() {
   const nameInput = document.getElementById("player-name-input");
   const yearSelect = document.getElementById("year-select");
@@ -217,10 +258,9 @@ function setPlayerFromCreation() {
   const player = createPlayer(name, year, team);
 
   SKILLS.forEach((skillName) => {
-    const valueEl = document.getElementById(`${skillName}-value`);
-    if (!valueEl) return;
-    const assignedBonus = Number(valueEl.textContent) || 5;
-    player[skillName] = assignedBonus;
+    const inputEl = document.querySelector(`.skill-input[data-skill="${skillName}"]`);
+    const bonusValue = Number.parseInt(inputEl?.value || "0", 10) || 0;
+    player[skillName] = 5 + bonusValue;
   });
 
   player.freePoints = 0;
@@ -696,7 +736,7 @@ function updatePlayerDisplay() {
 
   seasonDetailsEl.innerHTML = `
     <div><strong>Games played this season:</strong> ${player.gamesPlayed}</div>
-    <div><strong>Singes:</strong> ${player.singles}</div>
+    <div><strong>Singles:</strong> ${player.singles}</div>
     <div><strong>Doubles:</strong> ${player.doubles}</div>
     <div><strong>Triples:</strong> ${player.triples}</div>
     <div><strong>Walks:</strong> ${player.walks}</div>
@@ -832,16 +872,28 @@ function bindControls() {
 function initializeSkillValues() {
   const skillMap = ["contact", "power", "speed", "coordination", "endurance", "iq"];
   skillMap.forEach((skill) => {
-    const el = document.getElementById(`${skill}-value`);
-    if (el) {
-      el.textContent = "5";
+    const inputEl = document.querySelector(`.skill-input[data-skill="${skill}"]`);
+    const totalEl = document.getElementById(`${skill}-total`);
+
+    if (inputEl) {
+      inputEl.value = "0";
+    }
+
+    if (totalEl) {
+      totalEl.textContent = "5";
     }
   });
-  updateBonusPointsDisplay();
+
+  const remainingEl = document.getElementById("remaining-points");
+  if (remainingEl) remainingEl.textContent = "10";
+
+  const bonusEl = document.getElementById("bonus-points-left");
+  if (bonusEl) bonusEl.textContent = "10";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   initializeSkillValues();
+  bindSkillAllocationInputs();
   bindSkillButtons();
   bindControls();
   resetBonusPoints();
